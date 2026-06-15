@@ -34,8 +34,8 @@ A bootcamp Phase 1 project demonstrating data cleaning, machine learning, modula
 
 ```bash
 # 1. Clone
-git clone https://github.com/chenxi-debugger/nyc-real-estate-knn.git
-cd nyc-real-estate-knn
+git clone https://github.com/chenxi-debugger/nyc-real-estate-analytics.git
+cd nyc-real-estate-analytics
 
 # 2. Set up virtual environment
 python -m venv .venv
@@ -58,7 +58,8 @@ Then open <http://127.0.0.1:5001/> in your browser.
 
 This project follows the **Flask Application Factory Pattern** with **Blueprint** routing and a **Service Layer**.
 
-nyc-real-estate-knn/
+```
+nyc-real-estate-analytics/
 ├── app/
 │   ├── run.py                  ← Application factory + entrypoint
 │   ├── routes/
@@ -83,6 +84,8 @@ nyc-real-estate-knn/
 
 ### Why this structure?
 
+```
+
 | Concern | Solution |
 |---|---|
 | Avoid 250-line monolithic `app.py` | Separate `services/`, `utils/`, `routes/` |
@@ -94,6 +97,8 @@ nyc-real-estate-knn/
 
 ## 🤖 The Model
 
+```
+
 ColumnTransformer
 ├── StandardScaler  on  [GROSS SQUARE FEET, YEAR BUILT, TOTAL UNITS]
 └── OneHotEncoder   on  [BOROUGH]
@@ -104,7 +109,11 @@ KNeighborsRegressor(n_neighbors=10, weights="distance")
 ▼
 Target: log10(SALE PRICE)   →   exp back to USD at inference
 
+```
+
 ### Model performance (test set, 5,539 samples)
+
+```
 
 | Metric | Value |
 |---|---|
@@ -112,6 +121,8 @@ Target: log10(SALE PRICE)   →   exp back to USD at inference
 | MAE | **$483,066** |
 | n_train | 22,153 |
 | n_test | 5,539 |
+
+```
 
 ### Why these design choices?
 
