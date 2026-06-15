@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NYC Real Estate Analysis Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f8f9fa; color: #333; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid #ddd; }
+        h1 { margin: 0; color: #2c3e50; }
+        .subtitle { color: #7f8c8d; font-size: 1.1em; margin-top: 10px; }
+        
+        .section-title { margin-top: 40px; margin-bottom: 20px; font-size: 1.5em; color: #2c3e50; border-left: 5px solid #3498db; padding-left: 15px; }
+        
+        .chart-container { background: white; padding: 20px; margin-bottom: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .chart-container:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.1); }
+        
+        h2 { font-size: 1.2em; color: #444; margin-top: 0; }
+        .desc { color: #666; font-size: 0.9em; margin-bottom: 15px; }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+        
+        @media (max-width: 1024px) { .grid-3 { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        /* Tabs Styling */
+        .tabs { margin-bottom: 20px; border-bottom: 2px solid #ddd; display: flex; justify-content: center; }
+        .tab-btn {
+            background-color: transparent;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1.1em;
+            color: #666;
+            font-weight: bold;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        .tab-btn:hover { color: #007bff; }
+        .tab-btn.active { color: #007bff; border-bottom: 3px solid #007bff; }
+        
+        .tab-content { display: none; animation: fadeIn 0.5s; }
+        .tab-content.active { display: block; }
+
+        .kpi { display: inline-block; padding: 6px 10px; background: #f6f8fa; border: 1px solid #eee; border-radius: 6px; margin-right: 10px; font-size: 0.95em; color: #2c3e50; }
+
+        .section-title.center {
+            text-align: center;
+            border-left: none;
+            padding-left: 0;
+        }
+        .section-title.center::after {
+            content: '';
+            display: block;
+            width: 60px;
+            height: 4px;
+            background: #3498db;
+            margin: 10px auto 0;
+            border-radius: 2px;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>NYC Real Estate Data Analysis</h1>
+            <div class="subtitle">Comprehensive analysis from basic statistics to machine learning models</div>
+            <div style="margin-top: 14px;">
+                <a href="/predict" style="display:inline-block;background:#007bff;color:#fff;padding:10px 14px;border-radius:6px;text-decoration:none;">Price Prediction</a>
+            </div>
+        </header>
+
+        <h3 class="section-title">Overview</h3>
+        <div class="grid-2">
+            <div class="chart-container">
+                <h2>Average Sale Price by Borough (Bar)</h2>
+                <div id="chart-borough"></div>
+            </div>
+            <div class="chart-container">
+                <h2>Building Class Share (Pie)</h2>
+                <div id="chart-building"></div>
+            </div>
+        </div>
+
+        <h3 class="section-title">Trends & Relationships</h3>
+        <div class="grid-2">
+            <div class="chart-container">
+                <h2>Sale Price vs Gross Square Feet (Scatter)</h2>
+                <div class="desc">A sampled scatter plot to show the relationship between size and price.</div>
+                <div id="chart-scatter"></div>
+            </div>
+            <div class="chart-container">
+                <h2>Monthly Average Sale Price Trend (Line)</h2>
+                <div class="desc">Monthly aggregated trend of average sale price over time.</div>
+                <div id="chart-trend"></div>
+            </div>
+        </div>
+
+        <h3 class="section-title center">Additional Insights</h3>
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="openTab('knn', event)">Sale Price Distribution (Histogram)</button>
+            <button class="tab-btn" onclick="openTab('outliers', event)">Price per SqFt by Borough (Box)</button>
+            <button class="tab-btn" onclick="openTab('clusters', event)">Feature Correlation (Heatmap)</button>
+        </div>
+
+        <div id="knn" class="tab-content active">
+            <div class="chart-container">
+                <h2>Sale Price Distribution (Histogram, log10)</h2>
+                <div class="desc">A distribution view using log10(SALE PRICE) to reduce long-tail skew.</div>
+                <div id="chart-knn"></div>
+            </div>
+        </div>
+
+        <div id="outliers" class="tab-content">
+            <div class="chart-container">
+                <h2>Price per SqFt by Borough (Box Plot)</h2>
+                <div class="desc">Compare distribution across boroughs; outliers are shown as points.</div>
+                <div id="chart-outliers"></div>
+            </div>
+        </div>
+
+        <div id="clusters" class="tab-content">
+            <div class="chart-container">
+                <h2>Feature Correlation (Heatmap)</h2>
+                <div class="desc">Correlation matrix for key features (price, size, year built, units, price per sqft).</div>
+                <div id="chart-clusters"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data passed from Flask
+        var plotBorough = {{ plot_borough | safe }};
+        var plotBuilding = {{ plot_building | safe }};
+        var plotScatter = {{ plot_scatter | safe }};
+        var plotTrend = {{ plot_trend | safe }};
+        var plotKnn = {{ plot_knn | safe }};
+        var plotOutliers = {{ plot_outliers | safe }};
+        var plotClusters = {{ plot_clusters | safe }};
+        
+
+        // Render Charts
+        var config = {responsive: true};
+        Plotly.newPlot('chart-borough', plotBorough.data, plotBorough.layout, config);
+        Plotly.newPlot('chart-building', plotBuilding.data, plotBuilding.layout, config);
+        Plotly.newPlot('chart-scatter', plotScatter.data, plotScatter.layout, config);
+        Plotly.newPlot('chart-trend', plotTrend.data, plotTrend.layout, config);
+        
+        // Render Advanced Charts (need to resize when tab opens)
+        var advancedConfig = {responsive: true};
+        Plotly.newPlot('chart-knn', plotKnn.data, plotKnn.layout, advancedConfig);
+        Plotly.newPlot('chart-outliers', plotOutliers.data, plotOutliers.layout, advancedConfig);
+        Plotly.newPlot('chart-clusters', plotClusters.data, plotClusters.layout, advancedConfig);
+
+        // Tab Logic
+        function openTab(tabName, e) {
+            // Hide all tab content
+            var contents = document.getElementsByClassName("tab-content");
+            for (var i = 0; i < contents.length; i++) {
+                contents[i].style.display = "none";
+                contents[i].classList.remove("active");
+            }
+            
+            // Remove active class from buttons
+            var buttons = document.getElementsByClassName("tab-btn");
+            for (var i = 0; i < buttons.length; i++) {
+                buttons[i].classList.remove("active");
+            }
+            
+            // Show current tab
+            var currentTab = document.getElementById(tabName);
+            currentTab.style.display = "block";
+            // Small delay to allow display:block to apply before resizing plot
+            setTimeout(function() {
+                currentTab.classList.add("active");
+                window.dispatchEvent(new Event('resize')); // Trigger Plotly resize
+            }, 10);
+            
+            // Highlight button
+            if (e && e.currentTarget) {
+                e.currentTarget.classList.add("active");
+            }
+        }
+    </script>
+</body>
+</html>

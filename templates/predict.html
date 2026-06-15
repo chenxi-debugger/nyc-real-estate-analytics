@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price Prediction</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f8f9fa; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #ddd; }
+        h1 { margin: 0; color: #2c3e50; font-size: 1.6em; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        label { font-weight: 600; color: #2c3e50; display: block; margin-bottom: 6px; }
+        input, select { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 1em; box-sizing: border-box; }
+        .actions { margin-top: 16px; display: flex; justify-content: center; }
+        button { background: #007bff; color: white; border: none; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-size: 1em; }
+        button:hover { background: #0069d9; }
+        .msg { margin-top: 16px; padding: 12px 14px; border-radius: 6px; text-align: center; }
+        .msg.error { background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; }
+        .msg.ok { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .hint { color: #6b7280; font-size: 0.95em; margin-top: 8px; }
+        @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } header { flex-direction: column; align-items: flex-start; gap: 8px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Price Prediction</h1>
+            <div><a href="/">Back to Dashboard</a></div>
+        </header>
+
+        <div class="card">
+            <form method="post" action="/predict" autocomplete="off">
+                <div class="grid">
+                    <div>
+                        <label for="gross_sqft">GROSS SQUARE FEET</label>
+                        <input id="gross_sqft" name="gross_sqft" type="number" step="1" min="1" placeholder="e.g. 1500" value="{{ form['gross_sqft'] }}" required>
+                    </div>
+                    <div>
+                        <label for="year_built">YEAR BUILT</label>
+                        <input id="year_built" name="year_built" type="number" step="1" min="1800" max="2030" placeholder="e.g. 1998" value="{{ form['year_built'] }}" required>
+                    </div>
+                    <div>
+                        <label for="total_units">TOTAL UNITS</label>
+                        <input id="total_units" name="total_units" type="number" step="1" min="1" max="1000" placeholder="e.g. 10" value="{{ form['total_units'] }}" required>
+                    </div>
+                    <div>
+                        <label for="borough">BOROUGH</label>
+                        <select id="borough" name="borough" required>
+                            {% for v, name in borough_options %}
+                            <option value="{{ v }}" {% if form['borough']|int == v %}selected{% endif %}>{{ name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button type="submit">Predict Price</button>
+                </div>
+            </form>
+
+            {% if error %}
+            <div class="msg error">{{ error }}</div>
+            {% endif %}
+            {% if result is not none %}
+            <div class="msg ok">Predicted SALE PRICE: {{ "{:,.2f}".format(result) }}</div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
