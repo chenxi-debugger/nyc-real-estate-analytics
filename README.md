@@ -81,10 +81,10 @@ nyc-real-estate-analytics/
 └── docs/
 └── reference_images/       ← Project requirements references
 
+```
 
 ### Why this structure?
 
-```
 
 | Concern | Solution |
 |---|---|
