@@ -70,10 +70,9 @@ EVAL_DIR = PROJECT_ROOT / "static" / "eval"
 CV_FOLDS = 5
 RANDOM_STATE = 42
 
-
 # ============================================================
 # 候选模型 + 各自的超参数网格
-#   —— 仿照"分类项目 train.py"的写法:每个模型带自己的 params,
+#   —— 每个模型带自己的 params,
 #      循环里统一 GridSearchCV。这样每个模型都用各自最优参数公平比较。
 #   —— 注意键名前缀 "model__":因为模型被包在 Pipeline 的 "model" 步骤里,
 #      Pipeline 要求用 "步骤名__参数名" 来定位参数。
@@ -122,7 +121,6 @@ def _build_model_configs(svc):
             },
         },
     }
-
 
 # ============================================================
 # 核心:训练 + 选优 (可被命令行运行,也可被 model_service import)
@@ -181,7 +179,7 @@ def train_and_select(df, save=True, make_plots=True, verbose=True):
             "model": name,
             "cv_r2_mean": float(cv_r2),
             "cv_r2_std": float(grid.cv_results_["std_test_score"][grid.best_index_]),
-        })
+        })  # 用冠军编号,取出冠军那一个的标准差
 
         if verbose:
             print(f"  Best params: {best_params}")
@@ -259,7 +257,6 @@ def main():
         raise SystemExit("数据加载失败")
     train_and_select(data_svc.df, save=True, make_plots=True, verbose=True)
     print("\nDone.")
-
 
 # ============================================================
 # 画图函数 (原样保留)
