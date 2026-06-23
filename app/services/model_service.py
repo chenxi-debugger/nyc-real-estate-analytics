@@ -1,24 +1,3 @@
-"""
-model_service.py
-================
-KNN 回归模型,预测 NYC 房产 SALE PRICE。
-
-模型流水线 (Pipeline):
-
-    ColumnTransformer
-        ├── 数值列: StandardScaler  (GROSS SQUARE FEET / YEAR BUILT / TOTAL UNITS)
-        └── 分类列: OneHotEncoder   (BOROUGH)
-        │
-        ▼
-    KNeighborsRegressor(n_neighbors=10, weights='distance')
-
-关键设计:
-    1. 训练目标用 log10(SALE PRICE),预测时 10**y_hat 还原 —— 解决长尾分布问题
-    2. 训练前裁掉极端值 (top/bottom 0.5%) —— 避免 outliers 污染邻居搜索
-    3. 模型用 joblib 缓存到 models/knn_pipeline.pkl —— 重启不用重训
-    4. 预测方法包 try/except —— 输入异常时不让 Flask 崩
-"""
-
 import joblib
 import numpy as np
 import pandas as pd

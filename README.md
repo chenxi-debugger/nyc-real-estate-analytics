@@ -65,34 +65,34 @@ The first version of this project used a single **K-Nearest Neighbors** model �
 
 ### Candidates — covering both ensemble families
 
-| Model | Family | Role |
-|---|---|---|
-| Linear Regression | — | Baseline (performance floor) |
-| Random Forest | **Bagging** | Many independent trees vote & average → reduces variance |
-| GBDT | **Boosting** | Trees added sequentially, each correcting prior errors → reduces bias |
-| **LightGBM** | **Boosting** | Industrial, regularized, efficient GBDT → **champion** |
+| Model             | Family       | Role                                                         |
+| ----------------- | ------------ | ------------------------------------------------------------ |
+| Linear Regression | —            | Baseline (performance floor)                                 |
+| Random Forest     | **Bagging**  | Many independent trees vote & average → reduces variance     |
+| GBDT              | **Boosting** | Trees added sequentially, each correcting prior errors → reduces bias |
+| **LightGBM**      | **Boosting** | Industrial, regularized, efficient GBDT → **champion**       |
 
 ### Model comparison (5-fold cross-validation)
 
 ![Model comparison](static/eval/leaderboard.png)
 
-| Model | CV R² |
-|---|---|
-| **LightGBM** | **0.675** |
-| Random Forest | 0.659 |
-| GBDT | 0.641 |
-| Linear Regression | 0.223 |
+| Model             | CV R²     |
+| ----------------- | --------- |
+| **LightGBM**      | **0.675** |
+| Random Forest     | 0.659     |
+| GBDT              | 0.641     |
+| Linear Regression | 0.223     |
 
 The story the numbers tell: the linear baseline explains only ~22% of price variance (price is highly non-linear in these features), tree ensembles roughly triple that, and boosting edges out bagging — which is the typical outcome on tabular regression.
 
 ### Champion performance (tuned LightGBM, held-out test set)
 
-| Metric | Value |
-|---|---|
-| R² | **≈ 0.68** |
-| MAE | **≈ $350K** |
-| RMSE | ≈ $1.16M |
-| MAPE | ≈ 45% |
+| Metric | Value       |
+| ------ | ----------- |
+| R²     | **≈ 0.68**  |
+| MAE    | **≈ $350K** |
+| RMSE   | ≈ $1.16M    |
+| MAPE   | ≈ 45%       |
 
 #### Predicted vs Actual
 
@@ -126,17 +126,17 @@ KNN wasn't *wrong* — given the same `NEIGHBORHOOD` feature, it improves from R
 
 ## 🧬 Features
 
-| Feature | Source | Type |
-|---|---|---|
-| `GROSS SQUARE FEET` | user input | numeric |
-| `YEAR BUILT` | user input | numeric |
-| `TOTAL UNITS` | user input | numeric |
-| `BOROUGH` | user input | categorical |
-| `NEIGHBORHOOD` | user input (cascading) | categorical (250) |
-| `SQFT_PER_UNIT` | **derived** (area ÷ units) | numeric |
-| `BUILDING_AGE` | **derived** (sale year − built year) | numeric |
-| `SALE_MONTH` | **derived** | numeric |
-| `BUILDING CLASS CATEGORY` | default value | categorical |
+| Feature                   | Source                               | Type              |
+| ------------------------- | ------------------------------------ | ----------------- |
+| `GROSS SQUARE FEET`       | user input                           | numeric           |
+| `YEAR BUILT`              | user input                           | numeric           |
+| `TOTAL UNITS`             | user input                           | numeric           |
+| `BOROUGH`                 | user input                           | categorical       |
+| `NEIGHBORHOOD`            | user input (cascading)               | categorical (250) |
+| `SQFT_PER_UNIT`           | **derived** (area ÷ units)           | numeric           |
+| `BUILDING_AGE`            | **derived** (sale year − built year) | numeric           |
+| `SALE_MONTH`              | **derived**                          | numeric           |
+| `BUILDING CLASS CATEGORY` | default value                        | categorical       |
 
 The predict form asks the user for 5 inputs; the other features are computed server-side, so the UX stays simple while the model gets richer signal.
 
@@ -180,13 +180,41 @@ nyc-real-estate-analytics/
 
 ### Why this structure?
 
-| Concern | Solution |
-|---|---|
-| Avoid a monolithic `app.py` | Separate `services/`, `utils/`, `routes/` |
-| Avoid circular imports | Routes use `current_app.config`, not direct imports |
-| Make every module testable | Each file has an `if __name__ == "__main__"` self-test |
+| Concern                            | Solution                                                  |
+| ---------------------------------- | --------------------------------------------------------- |
+| Avoid a monolithic `app.py`        | Separate `services/`, `utils/`, `routes/`                 |
+| Avoid circular imports             | Routes use `current_app.config`, not direct imports       |
+| Make every module testable         | Each file has an `if __name__ == "__main__"` self-test    |
 | Keep training off the request path | Offline `train_and_evaluate.py` produces the cached model |
-| Avoid retraining on every restart | `joblib` cache to `models/` |
+| Avoid retraining on every restart  | `joblib` cache to `models/`                               |
+
+### The Service Layer pattern
+
+The core logic is organized into three **service classes**, each owning one
+responsibility:
+
+| Service        | Responsibility                    | Key state it holds                                  | Public methods               |
+| -------------- | --------------------------------- | --------------------------------------------------- | ---------------------------- |
+| `DataService`  | Load & clean the CSV              | `self.df` (cleaned DataFrame)                       | `load_data()`                |
+| `ModelService` | Compare, select & serve the model | `self.pipeline`, `self.leaderboard`, `self.metrics` | `fit_or_load()`, `predict()` |
+| `PlotService`  | Build the dashboard charts        | chart JSON                                          | `generate_all()`             |
+
+Each service bundles its **data (state)** together with the **methods that
+operate on that data**, instead of scattering loose functions and global
+variables across the project. A caller gets one object — e.g. `data_svc` —
+and accesses both the cleaned table (`data_svc.df`) and the operations on it
+(`data_svc.load_data()`) through the same handle.
+
+**Why classes here and not just functions?** Because each service needs to
+*hold state* across calls (the cleaned DataFrame is loaded once and reused by
+the model and plot layers), bundle related operations together, and present a
+consistent shape across the codebase. A one-shot "read a file, return a value"
+task wouldn't need a class — these do.
+
+> Note: this is a **Service Layer inside a single (monolithic) Flask app** — a
+> code-organization pattern. It is *not* a microservice architecture, which
+> would mean several independently deployed programs communicating over the
+> network. Everything here runs in one process.
 
 ---
 
@@ -194,13 +222,13 @@ nyc-real-estate-analytics/
 
 The raw CSV has **36,887 rows**; after cleaning, **28,162 rows** are used.
 
-| Step | Logic |
-|---|---|
-| 1. Deduplication | `drop_duplicates()` |
-| 2. Type coercion | `pd.to_numeric(errors='coerce')` on numeric columns |
-| 3. Filter invalid values | `SALE PRICE > 10,000` · `GROSS SQUARE FEET > 0` · `1800 < YEAR BUILT ≤ 2030` · `1 ≤ TOTAL UNITS ≤ 1000` · `BOROUGH ∈ {1..5}` |
+| Step                             | Logic                                                        |
+| -------------------------------- | ------------------------------------------------------------ |
+| 1. Deduplication                 | `drop_duplicates()`                                          |
+| 2. Type coercion                 | `pd.to_numeric(errors='coerce')` on numeric columns          |
+| 3. Filter invalid values         | `SALE PRICE > 10,000` · `GROSS SQUARE FEET > 0` · `1800 < YEAR BUILT ≤ 2030` · `1 ≤ TOTAL UNITS ≤ 1000` · `BOROUGH ∈ {1..5}` |
 | 4. Outlier trimming (model only) | Top/bottom 0.5% of price & square footage dropped before training |
-| 5. Derived columns | `BOROUGH_NAME` · `Price_Per_SqFt` · `SALE DATE` → datetime |
+| 5. Derived columns               | `BOROUGH_NAME` · `Price_Per_SqFt` · `SALE DATE` → datetime   |
 
 ---
 
@@ -208,13 +236,13 @@ The raw CSV has **36,887 rows**; after cleaning, **28,162 rows** are used.
 
 The `/predict` route validates input through `app/utils/validators.py` using the **Result Pattern** `(cleaned, error)`:
 
-| Field | Rule |
-|---|---|
-| `GROSS SQUARE FEET` | `> 0` |
-| `YEAR BUILT` | `1800 ≤ y ≤ 2030` |
-| `TOTAL UNITS` | `1 ≤ u ≤ 1000` |
-| `BOROUGH` | `∈ {1, 2, 3, 4, 5}` |
-| `NEIGHBORHOOD` | non-empty, must be valid for the chosen borough |
+| Field               | Rule                                            |
+| ------------------- | ----------------------------------------------- |
+| `GROSS SQUARE FEET` | `> 0`                                           |
+| `YEAR BUILT`        | `1800 ≤ y ≤ 2030`                               |
+| `TOTAL UNITS`       | `1 ≤ u ≤ 1000`                                  |
+| `BOROUGH`           | `∈ {1, 2, 3, 4, 5}`                             |
+| `NEIGHBORHOOD`      | non-empty, must be valid for the chosen borough |
 
 Invalid inputs return a friendly message and keep the user's entered values.
 
@@ -265,4 +293,4 @@ python train_and_evaluate.py             # full train + tune + plots
 
 ## 📄 License
 
-For educational purposes. Data is from publicly available NYC Department of Finance property sales records.
+For educational purposes only. Data is from publicly available NYC Department of Finance property sales records.
