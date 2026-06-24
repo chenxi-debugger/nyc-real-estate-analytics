@@ -23,7 +23,7 @@ A bootcamp project demonstrating data cleaning, **model comparison & selection**
 - 📊 **7 interactive Plotly charts** analyzing 28K NYC property sales
 - 🤖 **Model-selection pipeline** — Linear Regression, Random Forest, GBDT, and LightGBM are compared via 5-fold cross-validation; the champion is served
 - 🏆 **Champion: tuned LightGBM**, **R² ≈ 0.68** on the held-out test set (up from KNN's 0.56)
-- 🧬 **Feature engineering** — derived `SQFT_PER_UNIT`, `BUILDING_AGE`, `SALE_MONTH` plus high-cardinality `NEIGHBORHOOD` (250 categories)
+- 🧬 **Feature engineering** — derived `SQFT_PER_UNIT`, `BUILDING_AGE` plus high-cardinality `NEIGHBORHOOD` (250 categories) and user-selected `BUILDING CLASS`
 - 🎛️ **Hyperparameter tuning** via `GridSearchCV` with L2 regularization
 - 🗺️ **Cascading dropdown** — pick a borough, then its neighborhoods (location is the #1 price driver)
 - 🏗️ **Industrial Flask architecture** — Application Factory + Blueprint + Service Layer
@@ -46,16 +46,26 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. (Optional) Re-train + regenerate evaluation plots
-python train_and_evaluate.py
-
-# 5. Run the app
+# 4. Run the app — the trained model ships with the repo, so this works immediately
 python -m app.run
 ```
 
 Then open <http://127.0.0.1:5001/> in your browser.
 
-The trained champion model is cached to `models/champion_pipeline.pkl`. Run `train_and_evaluate.py` to retrain from scratch and regenerate the evaluation plots in `static/eval/`.
+**The app works out-of-the-box.** The trained champion model
+(`models/champion_pipeline.pkl`) is committed with the project, so after
+`git clone` you can run it straight away — no training step required.
+
+`train_and_evaluate.py` is the **offline model-selection pipeline** — the
+"work record" showing how the champion was chosen (4-model comparison,
+GridSearch tuning, MLflow tracking, evaluation plots). You only run it if you
+want to **reproduce or re-train** the model from scratch:
+
+```bash
+# Optional — only to reproduce the model-selection process
+python train_and_evaluate.py        # retrains, re-tunes, regenerates plots + MLflow runs
+mlflow ui                            # then browse http://127.0.0.1:5000 to see tracked experiments
+```
 
 ---
 
@@ -65,34 +75,34 @@ The first version of this project used a single **K-Nearest Neighbors** model �
 
 ### Candidates — covering both ensemble families
 
-| Model             | Family       | Role                                                         |
-| ----------------- | ------------ | ------------------------------------------------------------ |
-| Linear Regression | —            | Baseline (performance floor)                                 |
-| Random Forest     | **Bagging**  | Many independent trees vote & average → reduces variance     |
-| GBDT              | **Boosting** | Trees added sequentially, each correcting prior errors → reduces bias |
-| **LightGBM**      | **Boosting** | Industrial, regularized, efficient GBDT → **champion**       |
+| Model | Family | Role |
+|---|---|---|
+| Linear Regression | — | Baseline (performance floor) |
+| Random Forest | **Bagging** | Many independent trees vote & average → reduces variance |
+| GBDT | **Boosting** | Trees added sequentially, each correcting prior errors → reduces bias |
+| **LightGBM** | **Boosting** | Industrial, regularized, efficient GBDT → **champion** |
 
 ### Model comparison (5-fold cross-validation)
 
 ![Model comparison](static/eval/leaderboard.png)
 
-| Model             | CV R²     |
-| ----------------- | --------- |
-| **LightGBM**      | **0.675** |
-| Random Forest     | 0.659     |
-| GBDT              | 0.641     |
-| Linear Regression | 0.223     |
+| Model | CV R² |
+|---|---|
+| **LightGBM** | **0.675** |
+| Random Forest | 0.659 |
+| GBDT | 0.641 |
+| Linear Regression | 0.223 |
 
 The story the numbers tell: the linear baseline explains only ~22% of price variance (price is highly non-linear in these features), tree ensembles roughly triple that, and boosting edges out bagging — which is the typical outcome on tabular regression.
 
 ### Champion performance (tuned LightGBM, held-out test set)
 
-| Metric | Value       |
-| ------ | ----------- |
-| R²     | **≈ 0.68**  |
-| MAE    | **≈ $350K** |
-| RMSE   | ≈ $1.16M    |
-| MAPE   | ≈ 45%       |
+| Metric | Value |
+|---|---|
+| R² | **≈ 0.68** |
+| MAE | **≈ $350K** |
+| RMSE | ≈ $1.16M |
+| MAPE | ≈ 45% |
 
 #### Predicted vs Actual
 
@@ -126,19 +136,18 @@ KNN wasn't *wrong* — given the same `NEIGHBORHOOD` feature, it improves from R
 
 ## 🧬 Features
 
-| Feature                   | Source                               | Type              |
-| ------------------------- | ------------------------------------ | ----------------- |
-| `GROSS SQUARE FEET`       | user input                           | numeric           |
-| `YEAR BUILT`              | user input                           | numeric           |
-| `TOTAL UNITS`             | user input                           | numeric           |
-| `BOROUGH`                 | user input                           | categorical       |
-| `NEIGHBORHOOD`            | user input (cascading)               | categorical (250) |
-| `SQFT_PER_UNIT`           | **derived** (area ÷ units)           | numeric           |
-| `BUILDING_AGE`            | **derived** (sale year − built year) | numeric           |
-| `SALE_MONTH`              | **derived**                          | numeric           |
-| `BUILDING CLASS CATEGORY` | default value                        | categorical       |
+| Feature | Source | Type |
+|---|---|---|
+| `GROSS SQUARE FEET` | user input | numeric |
+| `YEAR BUILT` | user input | numeric |
+| `TOTAL UNITS` | user input | numeric |
+| `BOROUGH` | user input | categorical |
+| `NEIGHBORHOOD` | user input (cascading) | categorical (250) |
+| `SQFT_PER_UNIT` | **derived** (area ÷ units) | numeric |
+| `BUILDING_AGE` | **derived** (sale year − built year) | numeric |
+| `BUILDING CLASS CATEGORY` | user input (dropdown) | categorical (11 common types) |
 
-The predict form asks the user for 5 inputs; the other features are computed server-side, so the UX stays simple while the model gets richer signal.
+The predict form asks the user for 6 inputs (5 fields + building class); SQFT_PER_UNIT and BUILDING_AGE are derived server-side. Every feature is meaningful at prediction time — an earlier SALE_MONTH feature was removed because it could only ever be a constant placeholder at inference (a training-serving skew), and building class was promoted from a default value to a real user-selected dropdown so the model actually uses it.
 
 ---
 
@@ -168,7 +177,7 @@ nyc-real-estate-analytics/
 ├── data/
 │   └── nyc_real_estate.csv     ← 36K rows of NYC property sales (2016–2017)
 ├── models/
-│   └── champion_pipeline.pkl   ← Cached champion model (gitignored)
+│   └── champion_pipeline.pkl   ← Trained champion model (committed — app works out-of-the-box)
 ├── static/
 │   ├── data/neighborhoods.json ← Borough → neighborhood mapping
 │   └── eval/                   ← Evaluation plots (PNG)
@@ -180,24 +189,24 @@ nyc-real-estate-analytics/
 
 ### Why this structure?
 
-| Concern                            | Solution                                                  |
-| ---------------------------------- | --------------------------------------------------------- |
-| Avoid a monolithic `app.py`        | Separate `services/`, `utils/`, `routes/`                 |
-| Avoid circular imports             | Routes use `current_app.config`, not direct imports       |
-| Make every module testable         | Each file has an `if __name__ == "__main__"` self-test    |
+| Concern | Solution |
+|---|---|
+| Avoid a monolithic `app.py` | Separate `services/`, `utils/`, `routes/` |
+| Avoid circular imports | Routes use `current_app.config`, not direct imports |
+| Make every module testable | Each file has an `if __name__ == "__main__"` self-test |
 | Keep training off the request path | Offline `train_and_evaluate.py` produces the cached model |
-| Avoid retraining on every restart  | `joblib` cache to `models/`                               |
+| Avoid retraining on every restart | `joblib` cache to `models/` |
 
 ### The Service Layer pattern
 
 The core logic is organized into three **service classes**, each owning one
 responsibility:
 
-| Service        | Responsibility                    | Key state it holds                                  | Public methods               |
-| -------------- | --------------------------------- | --------------------------------------------------- | ---------------------------- |
-| `DataService`  | Load & clean the CSV              | `self.df` (cleaned DataFrame)                       | `load_data()`                |
+| Service | Responsibility | Key state it holds | Public methods |
+|---|---|---|---|
+| `DataService` | Load & clean the CSV | `self.df` (cleaned DataFrame) | `load_data()` |
 | `ModelService` | Compare, select & serve the model | `self.pipeline`, `self.leaderboard`, `self.metrics` | `fit_or_load()`, `predict()` |
-| `PlotService`  | Build the dashboard charts        | chart JSON                                          | `generate_all()`             |
+| `PlotService` | Build the dashboard charts | chart JSON | `generate_all()` |
 
 Each service bundles its **data (state)** together with the **methods that
 operate on that data**, instead of scattering loose functions and global
@@ -222,13 +231,13 @@ task wouldn't need a class — these do.
 
 The raw CSV has **36,887 rows**; after cleaning, **28,162 rows** are used.
 
-| Step                             | Logic                                                        |
-| -------------------------------- | ------------------------------------------------------------ |
-| 1. Deduplication                 | `drop_duplicates()`                                          |
-| 2. Type coercion                 | `pd.to_numeric(errors='coerce')` on numeric columns          |
-| 3. Filter invalid values         | `SALE PRICE > 10,000` · `GROSS SQUARE FEET > 0` · `1800 < YEAR BUILT ≤ 2030` · `1 ≤ TOTAL UNITS ≤ 1000` · `BOROUGH ∈ {1..5}` |
+| Step | Logic |
+|---|---|
+| 1. Deduplication | `drop_duplicates()` |
+| 2. Type coercion | `pd.to_numeric(errors='coerce')` on numeric columns |
+| 3. Filter invalid values | `SALE PRICE > 10,000` · `GROSS SQUARE FEET > 0` · `1800 < YEAR BUILT ≤ 2030` · `1 ≤ TOTAL UNITS ≤ 1000` · `BOROUGH ∈ {1..5}` |
 | 4. Outlier trimming (model only) | Top/bottom 0.5% of price & square footage dropped before training |
-| 5. Derived columns               | `BOROUGH_NAME` · `Price_Per_SqFt` · `SALE DATE` → datetime   |
+| 5. Derived columns | `BOROUGH_NAME` · `Price_Per_SqFt` · `SALE DATE` → datetime |
 
 ---
 
@@ -236,13 +245,13 @@ The raw CSV has **36,887 rows**; after cleaning, **28,162 rows** are used.
 
 The `/predict` route validates input through `app/utils/validators.py` using the **Result Pattern** `(cleaned, error)`:
 
-| Field               | Rule                                            |
-| ------------------- | ----------------------------------------------- |
-| `GROSS SQUARE FEET` | `> 0`                                           |
-| `YEAR BUILT`        | `1800 ≤ y ≤ 2030`                               |
-| `TOTAL UNITS`       | `1 ≤ u ≤ 1000`                                  |
-| `BOROUGH`           | `∈ {1, 2, 3, 4, 5}`                             |
-| `NEIGHBORHOOD`      | non-empty, must be valid for the chosen borough |
+| Field | Rule |
+|---|---|
+| `GROSS SQUARE FEET` | `> 0` |
+| `YEAR BUILT` | `1800 ≤ y ≤ 2030` |
+| `TOTAL UNITS` | `1 ≤ u ≤ 1000` |
+| `BOROUGH` | `∈ {1, 2, 3, 4, 5}` |
+| `NEIGHBORHOOD` | non-empty, must be valid for the chosen borough |
 
 Invalid inputs return a friendly message and keep the user's entered values.
 
@@ -293,4 +302,4 @@ python train_and_evaluate.py             # full train + tune + plots
 
 ## 📄 License
 
-For educational purposes only. Data is from publicly available NYC Department of Finance property sales records.
+For educational purposes (bootcamp coursework). Data is from publicly available NYC Department of Finance property sales records.

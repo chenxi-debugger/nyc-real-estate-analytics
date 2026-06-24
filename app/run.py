@@ -6,7 +6,7 @@ Flask 应用入口 (Application Factory Pattern)。
 启动流程:
     1. create_app() 构造 Flask app
     2. 加载 + 清洗 NYC 房产数据         (DataService)
-    3. 加载或训练 KNN 模型              (ModelService)
+    3. 加载或训练模型 (四模型对比选优)              (ModelService)
     4. 生成 7 个 Plotly 图表的 JSON    (PlotService)
     5. 把 ModelService、charts 存进 app.config
     6. 注册 Blueprint (routes/dashboard.py)
@@ -41,7 +41,9 @@ from app.utils.plot_helper import PlotService
 BASE_DIR = Path(__file__).resolve().parents[1]
 
 CSV_PATH = BASE_DIR / "data" / "nyc_real_estate.csv"
-MODEL_PATH = BASE_DIR / "models" / "knn_pipeline.pkl"
+MODEL_PATH = BASE_DIR / "models" / "champion_pipeline.pkl"
+NEIGHBORHOODS_PATH = BASE_DIR / "static" / "data" / "neighborhoods.json"
+BUILDING_CLASSES_PATH = BASE_DIR / "static" / "data" / "building_classes.json"
 TEMPLATE_DIR = BASE_DIR / "templates"
 
 
@@ -65,6 +67,8 @@ def create_app():
     app = Flask(
         __name__,
         template_folder=str(TEMPLATE_DIR),
+        static_folder=str(BASE_DIR / "static"),
+        static_url_path="/static",
     )
 
     # ------------------------------------------------------------
@@ -79,9 +83,9 @@ def create_app():
         )
 
     # ------------------------------------------------------------
-    # 3. 加载或训练 KNN 模型
+    # 3. 加载或训练模型 (四模型对比选优)
     # ------------------------------------------------------------
-    print("\n[2/4] Preparing KNN model...")
+    print("\n[2/4] Preparing model (multi-model selection)...")
     model_svc = ModelService(MODEL_PATH)
     model_svc.fit_or_load(data_svc.df)
 
@@ -98,6 +102,23 @@ def create_app():
     app.config["DATA_SERVICE"] = data_svc
     app.config["MODEL_SERVICE"] = model_svc
     app.config["CHARTS"] = charts
+
+    # 加载"区→小区"联动数据,供 predict 页面下拉框使用
+    import json
+    try:
+        with open(NEIGHBORHOODS_PATH, encoding="utf-8") as f:
+            app.config["NEIGHBORHOODS"] = json.load(f)
+    except FileNotFoundError:
+        print(f"   warning: {NEIGHBORHOODS_PATH} not found; neighborhood dropdown will be empty")
+        app.config["NEIGHBORHOODS"] = {}
+
+    # 加载建筑类型选项,供 predict 页面下拉框使用
+    try:
+        with open(BUILDING_CLASSES_PATH, encoding="utf-8") as f:
+            app.config["BUILDING_CLASSES"] = json.load(f)
+    except FileNotFoundError:
+        print(f"   warning: {BUILDING_CLASSES_PATH} not found; building class dropdown will be empty")
+        app.config["BUILDING_CLASSES"] = []
 
     # ------------------------------------------------------------
     # 6. 注册 Blueprint

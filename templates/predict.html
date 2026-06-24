@@ -50,10 +50,28 @@
                     <div>
                         <label for="borough">BOROUGH</label>
                         <select id="borough" name="borough" required>
+                            <option value="" disabled {% if not form['borough'] %}selected{% endif %}>Select a borough…</option>
                             {% for v, name in borough_options %}
-                            <option value="{{ v }}" {% if form['borough']|int == v %}selected{% endif %}>{{ name }}</option>
+                            <option value="{{ v }}" {% if form['borough'] and form['borough']|int == v %}selected{% endif %}>{{ name }}</option>
                             {% endfor %}
                         </select>
+                    </div>
+                    <div>
+                        <label for="neighborhood">NEIGHBORHOOD</label>
+                        <select id="neighborhood" name="neighborhood" required>
+                            <option value="" disabled selected>Select a borough first…</option>
+                        </select>
+                        <div class="hint">Location is the strongest price driver — pick the neighborhood after the borough.</div>
+                    </div>
+                    <div>
+                        <label for="building_class">BUILDING CLASS</label>
+                        <select id="building_class" name="building_class" required>
+                            <option value="" disabled {% if not form['building_class'] %}selected{% endif %}>Select a building type…</option>
+                            {% for bc in building_classes %}
+                            <option value="{{ bc }}" {% if form['building_class'] == bc %}selected{% endif %}>{{ bc }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="hint">The type of property (one-family, walk-up rental, store building, etc.).</div>
                     </div>
                 </div>
 
@@ -70,5 +88,55 @@
             {% endif %}
         </div>
     </div>
+
+    <script>
+        // "区→小区" 联动数据 (后端注入)
+        const NEIGHBORHOODS = {{ neighborhoods_json | safe }};
+        // POST 回填时,后端记住的当前选择
+        const CURRENT_BOROUGH = "{{ form['borough'] }}";
+        const CURRENT_NEIGHBORHOOD = "{{ form['neighborhood'] }}";
+
+        const boroughSel = document.getElementById("borough");
+        const nbhdSel = document.getElementById("neighborhood");
+
+        // 根据所选 borough 填充小区下拉框
+        function populateNeighborhoods(borough, selected) {
+            nbhdSel.innerHTML = "";
+            const list = NEIGHBORHOODS[borough] || [];
+            if (list.length === 0) {
+                const opt = document.createElement("option");
+                opt.value = "";
+                opt.textContent = "Select a borough first…";
+                opt.disabled = true;
+                opt.selected = true;
+                nbhdSel.appendChild(opt);
+                return;
+            }
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = "Select a neighborhood…";
+            placeholder.disabled = true;
+            placeholder.selected = !selected;
+            nbhdSel.appendChild(placeholder);
+
+            list.forEach(function (name) {
+                const opt = document.createElement("option");
+                opt.value = name;
+                opt.textContent = name;
+                if (name === selected) opt.selected = true;
+                nbhdSel.appendChild(opt);
+            });
+        }
+
+        // 用户切换 borough 时,重新填充小区
+        boroughSel.addEventListener("change", function () {
+            populateNeighborhoods(this.value, null);
+        });
+
+        // 页面加载时:若是 POST 回填,恢复之前的选择
+        if (CURRENT_BOROUGH) {
+            populateNeighborhoods(CURRENT_BOROUGH, CURRENT_NEIGHBORHOOD);
+        }
+    </script>
 </body>
 </html>

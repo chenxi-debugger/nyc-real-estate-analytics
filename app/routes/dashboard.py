@@ -45,12 +45,14 @@ BOROUGH_OPTIONS = [
     (5, "Staten Island"),
 ]
 
-# /predict 路由的初始表单状态 (空 form,无 error,无 result)
+# 预测表单的初始状态 (空 form,无 error,无 result)
 EMPTY_FORM = {
     "gross_sqft": "",
     "year_built": "",
     "total_units": "",
     "borough": "",
+    "neighborhood": "",
+    "building_class": "",
 }
 
 
@@ -64,58 +66,63 @@ def index():
     渲染到 templates/index.html。
     """
     charts = current_app.config["CHARTS"]
-
-    # **charts 把 dict 展开成 plot_borough=..., plot_building=...
-    # 这要求 charts 的 key 和 templates/index.html 里的 {{ plot_xxx }} 一致
     return render_template("index.html", **charts)
 
 
 # ============================================================
-# 路由 2:KNN 预测 —— GET 显示表单 / POST 处理预测
+# 路由 2:价格预测 —— GET 显示表单 / POST 处理预测
 # ============================================================
 @dashboard_bp.route("/predict", methods=["GET", "POST"])
 def predict():
     """
     GET:  返回空白预测表单
-    POST: 验证输入 → 调用 KNN → 返回预测结果(或错误)
+    POST: 验证输入 → 调用冠军模型 → 返回预测结果(或错误)
 
-    模板需要 4 个变量:
-        form:            dict,4 个字段的当前值(出错时回填到表单)
-        error:           str 或 None,验证失败时的错误消息
-        result:          float 或 None,预测的 SALE PRICE
-        borough_options: borough 下拉选项
+    模板需要的变量:
+        form:               dict,各字段当前值(出错时回填)
+        error:              str 或 None
+        result:             float 或 None,预测的 SALE PRICE
+        borough_options:    borough 下拉选项
+        neighborhoods_json: {borough: [小区,...]} 的 JSON,前端联动用
     """
-    # 默认值:GET 请求或 POST 失败时的初始状态
-    form = dict(EMPTY_FORM)   # 用 dict() 复制一份,避免修改全局常量
+    import json as _json
+
+    form = dict(EMPTY_FORM)
     error = None
     result = None
 
+    # 下拉框数据 (GET / POST 都要传给模板)
+    neighborhoods = current_app.config.get("NEIGHBORHOODS", {})
+    building_classes = current_app.config.get("BUILDING_CLASSES", [])
+
     if request.method == "POST":
         # ===== 第 1 步:把用户输入回写到 form =====
-        # 出错时不清空输入框,让用户能修改而不是重输
         for key in form:
             form[key] = request.form.get(key, "").strip()
 
-        # ===== 第 2 步:验证表单 =====
-        cleaned, error = validate_prediction_form(request.form)
+        # ===== 第 2 步:验证表单 (带小区 + 建筑类型合法性校验) =====
+        boro = form.get("borough", "")
+        valid_nbhd = set(neighborhoods.get(boro, [])) if boro else None
+        valid_bc = set(building_classes) if building_classes else None
+        cleaned, error = validate_prediction_form(
+            request.form, valid_nbhd, valid_bc
+        )
 
-        # ===== 第 3 步:验证通过 → 调 KNN 模型 =====
+        # ===== 第 3 步:验证通过 → 调冠军模型 =====
         if cleaned is not None:
             model_svc = current_app.config["MODEL_SERVICE"]
             try:
                 result = model_svc.predict(**cleaned)
-                # **cleaned 把 dict 展开成关键字参数:
-                #   gross_sqft=1500.0, year_built=1998, total_units=2, borough=3
             except RuntimeError as exc:
-                # ModelService.predict() 已经把异常包装成 RuntimeError
                 error = str(exc)
                 result = None
 
-    # GET 和 POST 都渲染同一个模板,只是 form/error/result 内容不同
     return render_template(
         "predict.html",
         form=form,
         error=error,
         result=result,
         borough_options=BOROUGH_OPTIONS,
+        neighborhoods_json=_json.dumps(neighborhoods),
+        building_classes=building_classes,
     )

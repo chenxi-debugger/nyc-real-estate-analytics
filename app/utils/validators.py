@@ -24,36 +24,41 @@ validators.py
 VALID_BOROUGHS = {1, 2, 3, 4, 5}
 
 
-def validate_prediction_form(form):
+def validate_prediction_form(form, valid_neighborhoods=None, valid_building_classes=None):
     """
-    验证 KNN 预测表单。
+    验证预测表单。
 
     参数:
         form: dict,通常来自 Flask request.form,所有 value 都是 str
+        valid_neighborhoods: 合法小区名集合 (set/None)。传入时会校验小区。
+        valid_building_classes: 合法建筑类型集合 (set/None)。传入时会校验建筑类型。
 
     返回:
         (cleaned, error):
-            cleaned: dict,4 个清洗后的字段(int/float 类型),验证失败时为 None
+            cleaned: dict,清洗后的字段,验证失败时为 None
             error:   str,人类可读的错误消息,验证成功时为 None
 
-    范围规则(和 DataService 清洗规则保持一致):
-        gross_sqft  > 0
-        year_built  1800 <= y <= 2030
-        total_units 1 <= u <= 1000
-        borough     1, 2, 3, 4 或 5
+    范围规则:
+        gross_sqft     > 0
+        year_built     1800 <= y <= 2030
+        total_units    1 <= u <= 1000
+        borough        1, 2, 3, 4 或 5
+        neighborhood   非空 (若提供 valid_neighborhoods 则需在其中)
+        building_class 非空 (若提供 valid_building_classes 则需在其中)
     """
     # ===== 第 1 层:类型转换 =====
-    # 任何一个转不了 int/float,直接返回错误
     try:
         gross_sqft = float(form.get("gross_sqft", "").strip())
         year_built = int(form.get("year_built", "").strip())
         total_units = int(form.get("total_units", "").strip())
         borough = int(form.get("borough", "").strip())
     except (TypeError, ValueError):
-        return None, "All inputs must be valid numbers."
+        return None, "All numeric inputs must be valid numbers."
+
+    neighborhood = (form.get("neighborhood", "") or "").strip()
+    building_class = (form.get("building_class", "") or "").strip()
 
     # ===== 第 2 层:业务范围检查 =====
-    # 每个字段单独检查,出错就返回针对性的错误消息
     if gross_sqft <= 0:
         return None, "GROSS SQUARE FEET must be greater than 0."
 
@@ -66,12 +71,26 @@ def validate_prediction_form(form):
     if borough not in VALID_BOROUGHS:
         return None, "BOROUGH must be one of 1, 2, 3, 4, or 5."
 
+    if not neighborhood:
+        return None, "Please select a NEIGHBORHOOD."
+
+    if valid_neighborhoods is not None and neighborhood not in valid_neighborhoods:
+        return None, "Selected NEIGHBORHOOD is not recognized for this borough."
+
+    if not building_class:
+        return None, "Please select a BUILDING CLASS."
+
+    if valid_building_classes is not None and building_class not in valid_building_classes:
+        return None, "Selected BUILDING CLASS is not recognized."
+
     # ===== 全部通过 =====
     cleaned = {
         "gross_sqft": gross_sqft,
         "year_built": year_built,
         "total_units": total_units,
         "borough": borough,
+        "neighborhood": neighborhood,
+        "building_class": building_class,
     }
     return cleaned, None
 
