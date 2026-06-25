@@ -22,7 +22,7 @@ A bootcamp project demonstrating data cleaning, **model comparison & selection**
 
 - 📊 **7 interactive Plotly charts** analyzing 28K NYC property sales
 - 🤖 **Model-selection pipeline** — Linear Regression, Random Forest, GBDT, and LightGBM are compared via 5-fold cross-validation; the champion is served
-- 🏆 **Champion: tuned LightGBM**, **R² ≈ 0.68** on the held-out test set (up from KNN's 0.56)
+- 🏆 **Champion: tuned LightGBM**, **R² ≈ 0.65** on the held-out test set (best of four cross-validated candidates)
 - 🧬 **Feature engineering** — derived `SQFT_PER_UNIT`, `BUILDING_AGE` plus high-cardinality `NEIGHBORHOOD` (250 categories) and user-selected `BUILDING CLASS`
 - 🎛️ **Hyperparameter tuning** via `GridSearchCV` with L2 regularization
 - 🗺️ **Cascading dropdown** — pick a borough, then its neighborhoods (location is the #1 price driver)
@@ -71,7 +71,7 @@ mlflow ui                            # then browse http://127.0.0.1:5000 to see 
 
 ## 🤖 The Model: Why Comparison, Not Guesswork
 
-The first version of this project used a single **K-Nearest Neighbors** model — chosen early on simply because it was the most intuitive algorithm to start with. This rewrite replaces that guess with a principled **model-selection process**: train several candidates, score them fairly with cross-validation, and let the data pick the winner.
+Rather than committing to a single algorithm up front, this project uses a principled **model-selection process**: train several candidates, score them fairly with 5-fold cross-validation, and let the data pick the winner. The best model is then tuned and served.
 
 ### Candidates — covering both ensemble families
 
@@ -88,21 +88,21 @@ The first version of this project used a single **K-Nearest Neighbors** model �
 
 | Model | CV R² |
 |---|---|
-| **LightGBM** | **0.675** |
-| Random Forest | 0.659 |
-| GBDT | 0.641 |
-| Linear Regression | 0.223 |
+| **LightGBM** | **0.661** |
+| GBDT | 0.657 |
+| Random Forest | 0.628 |
+| Linear Regression | 0.628 |
 
-The story the numbers tell: the linear baseline explains only ~22% of price variance (price is highly non-linear in these features), tree ensembles roughly triple that, and boosting edges out bagging — which is the typical outcome on tabular regression.
+The story the numbers tell: all four models clear R² ≈ 0.63, but the two boosting methods (LightGBM, GBDT) edge out bagging (Random Forest) and the linear baseline — the typical outcome on tabular regression, where sequentially error-correcting trees capture non-linear feature interactions a bit better.
 
 ### Champion performance (tuned LightGBM, held-out test set)
 
 | Metric | Value |
 |---|---|
-| R² | **≈ 0.68** |
-| MAE | **≈ $350K** |
-| RMSE | ≈ $1.16M |
-| MAPE | ≈ 45% |
+| R² | **0.651** |
+| MAE | **≈ $360K** |
+| RMSE | ≈ $1.21M |
+| MAPE | ≈ 45.8% |
 
 #### Predicted vs Actual
 
@@ -116,7 +116,7 @@ The story the numbers tell: the linear baseline explains only ~22% of price vari
 
 **1. `log10(SALE PRICE)` as the target.** NYC sale prices span 5 orders of magnitude. Training on `log10` compresses the long tail and makes the error metric meaningful across price ranges; predictions are exponentiated back to USD at inference.
 
-**2. LightGBM's native handling of categories — no target encoding.** `NEIGHBORHOOD` has 250 categories. An early experiment with **target encoding** (replacing each neighborhood with its mean price) scored R² ≈ 0.656 but carries **data-leakage risk**. Letting the gradient-boosted trees split on one-hot categories directly was both *cleaner* (zero leakage) and *better* (R² ≈ 0.675). A case where the simpler, correct method beat the clever trick.
+**2. LightGBM's native handling of categories — no target encoding.** `NEIGHBORHOOD` has 250 categories. An early experiment with **target encoding** (replacing each neighborhood with its mean price) carries **data-leakage risk** if not done with careful out-of-fold computation. Letting the gradient-boosted trees split on one-hot categories directly is *cleaner* (zero leakage) and performs on par or better — a case where the simpler, correct method is preferable to the clever trick.
 
 **3. Different preprocessing per model family.** Linear Regression gets `StandardScaler` on numeric features (it's sensitive to absolute magnitude); tree models get `passthrough` (they split on order, not scale, so scaling is a no-op). This is encoded as two separate `ColumnTransformer` configurations.
 
@@ -127,10 +127,6 @@ The story the numbers tell: the linear baseline explains only ~22% of price vari
 ![Feature importance](static/eval/feature_importance.png)
 
 `NEIGHBORHOOD` is by far the strongest predictor — quantitatively confirming the real-estate truism that *location* drives price. The engineered `SQFT_PER_UNIT` ranks third, despite costing the user no extra input (it's derived server-side from area ÷ units).
-
-### A note on KNN
-
-KNN wasn't *wrong* — given the same `NEIGHBORHOOD` feature, it improves from R² 0.56 → 0.60. But the same feature lifts LightGBM by twice as much (→ 0.68). The reason: `NEIGHBORHOOD` is high-cardinality, and after one-hot encoding the feature space jumps to 255 dimensions. KNN measures distance in that space and suffers the **curse of dimensionality** (neighbors become unreliable), so it can only partly exploit location. Tree models split on categories directly, learn a price baseline per neighborhood, and are unaffected by dimensionality — so they use the single most important signal far more fully.
 
 ---
 
@@ -281,11 +277,11 @@ python train_and_evaluate.py             # full train + tune + plots
 
 ## 📚 What I Learned
 
-- **Don't pick a model — compare them.** The original KNN was an early guess. Building a 4-model cross-validated comparison turned "I used KNN" into "I evaluated bagging vs boosting and selected the best, with numbers to back it." That framing is the difference between *using* scikit-learn and *understanding* it.
+- **Don't pick a model — compare them.** Building a 4-model cross-validated comparison turns "I used model X" into "I evaluated bagging vs boosting and selected the best, with numbers to back it." That framing is the difference between *using* scikit-learn and *understanding* it.
 - **Evaluation scale matters.** Comparing R² computed on `log10(price)` against R² on raw dollars is apples-to-oranges — a trap that made a strong model look weak until the metric was aligned.
 - **The simple correct method can beat the clever one.** Native categorical splits beat target encoding here — both cleaner (no leakage) and higher R².
 - **Feature engineering is high-leverage.** A derived `SQFT_PER_UNIT` became the 3rd most important feature at zero UX cost.
-- **The curse of dimensionality is concrete, not abstract.** It's exactly why KNN under-uses the most important feature (`NEIGHBORHOOD`) while trees thrive on it.
+- **Every feature must be available at prediction time.** I removed a `SALE_MONTH` feature because it could only ever be a constant placeholder at inference (a training-serving skew), and promoted `BUILDING CLASS` from a default value to a real user-selected input so the model actually uses it.
 
 ---
 

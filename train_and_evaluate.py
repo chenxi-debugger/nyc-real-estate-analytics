@@ -269,14 +269,17 @@ def _plot_leaderboard(leaderboard, path):
     means = [d["cv_r2_mean"] for d in leaderboard]
     stds = [d["cv_r2_std"] for d in leaderboard]
     fig, ax = plt.subplots(figsize=(8, 4.5))
-    bars = ax.barh(names[::-1], means[::-1], xerr=stds[::-1],
+    means_r = means[::-1]
+    stds_r = stds[::-1]
+    bars = ax.barh(names[::-1], means_r, xerr=stds_r,
                    color=LAVENDER, edgecolor=PURPLE, capsize=4)
     bars[-1].set_color(PURPLE)  # 冠军高亮
     ax.set_xlabel("Cross-validated R² (higher is better)")
     ax.set_title("Model Comparison — 5-fold CV", color=PURPLE, fontweight="bold")
-    for i, m in enumerate(means[::-1]):
-        ax.text(m + 0.005, i, f"{m:.3f}", va="center", fontsize=9)
-    ax.set_xlim(0, max(means) * 1.18)
+    # 数字标签放在【误差棒右端之外】,避免被误差棒横杠盖住
+    for i, (m, s) in enumerate(zip(means_r, stds_r)):
+        ax.text(m + s + 0.012, i, f"{m:.3f}", va="center", fontsize=9)
+    ax.set_xlim(0, max(means) * 1.22)
     ax.grid(axis="x", color=GRID)
     ax.set_axisbelow(True)
     fig.tight_layout()
