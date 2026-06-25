@@ -43,7 +43,7 @@ class ModelService:
     # 后端从用户输入衍生的数值特征 (预测时仍随输入变化,不是常量)
     DERIVED_NUMERIC = ["SQFT_PER_UNIT", "BUILDING_AGE"]
     NUMERIC_FEATURES = USER_NUMERIC + DERIVED_NUMERIC
-    # 类别特征 —— 全部由用户提供 (区/小区/建筑类型),没有常量兜底
+    # 类别特征 —— 全部由用户提供 (区/小区/建筑类型)
     CATEGORICAL_FEATURES = ["BOROUGH", "NEIGHBORHOOD", "BUILDING CLASS CATEGORY"]
     FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES
     TARGET = "SALE PRICE"
@@ -168,7 +168,7 @@ class ModelService:
         """从原始列衍生 SQFT_PER_UNIT / BUILDING_AGE。"""
         df = df.copy()
 
-        # 房龄需要成交年份;SALE DATE 仅用于此,不再单独作为月份特征
+        # 房龄需要成交年份
         if "SALE DATE" in df.columns:
             sale_year = pd.to_datetime(df["SALE DATE"], errors="coerce").dt.year
         else:
