@@ -66,7 +66,8 @@ def index():
     渲染到 templates/index.html。
     """
     charts = current_app.config["CHARTS"]
-    return render_template("index.html", **charts)
+    return render_template("index.html", **charts) # ** 这个语法叫"字典解包"——把字典拆成"键=值"的参数。
+                                                   # **charts ——把 charts 字典"展开"成一个个变量传给模板。
 
 
 # ============================================================
