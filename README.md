@@ -288,7 +288,7 @@ python train_and_evaluate.py             # full train + tune + plots
 ## 🔮 Next Steps
 
 - [ ] Add **comparable properties** display alongside predictions
-- [ ] Expand the GridSearch and try **Optuna** for tuning
+- [ ] Try **Optuna** for tuning
 - [ ] Add **SHAP** values for per-prediction explanations
 - [ ] Add **pytest** unit tests and GitHub Actions CI
 - [ ] Deploy to **Render** (live demo link)
@@ -298,4 +298,4 @@ python train_and_evaluate.py             # full train + tune + plots
 
 ## 📄 License
 
-For educational purposes (bootcamp coursework). Data is from publicly available NYC Department of Finance property sales records.
+For educational purposes only. Data is from publicly available NYC Department of Finance property sales records.

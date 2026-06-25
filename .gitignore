@@ -14,9 +14,16 @@ env/
 # Jupyter
 .ipynb_checkpoints/
 
-# Models (regenerated on first run)
+# Models
+# NOTE: the trained champion model is intentionally committed (the !line below)
+# so the app works out-of-the-box after git clone — this is a showcase project,
+# not a library. Other stray .pkl files are still ignored.
 *.pkl
-models/
+!models/champion_pipeline.pkl
+
+# MLflow run artifacts (regenerated when train_and_evaluate.py runs)
+mlruns/
+mlflow.db
 
 # IDE / Editor
 .idea/
@@ -33,6 +40,3 @@ Thumbs.db
 
 # Local environment variables
 .env
-
-# Legacy single-file version, kept locally for reference
-app_legacy.py
