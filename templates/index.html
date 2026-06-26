@@ -107,32 +107,32 @@
         <h3 class="section-title center">Additional Insights</h3>
         
         <div class="tabs">
-            <button class="tab-btn active" onclick="openTab('knn', event)">Sale Price Distribution (Histogram)</button>
-            <button class="tab-btn" onclick="openTab('outliers', event)">Price per SqFt by Borough (Box)</button>
-            <button class="tab-btn" onclick="openTab('clusters', event)">Feature Correlation (Heatmap)</button>
+            <button class="tab-btn active" onclick="openTab('price_dist', event)">Sale Price Distribution (Histogram)</button>
+            <button class="tab-btn" onclick="openTab('pps_box', event)">Price per SqFt by Borough (Box)</button>
+            <button class="tab-btn" onclick="openTab('corr', event)">Feature Correlation (Heatmap)</button>
         </div>
 
-        <div id="knn" class="tab-content active">
+        <div id="price_dist" class="tab-content active">
             <div class="chart-container">
                 <h2>Sale Price Distribution (Histogram, log10)</h2>
                 <div class="desc">A distribution view using log10(SALE PRICE) to reduce long-tail skew.</div>
-                <div id="chart-knn"></div>
+                <div id="chart-price_dist"></div>
             </div>
         </div>
 
-        <div id="outliers" class="tab-content">
+        <div id="pps_box" class="tab-content">
             <div class="chart-container">
                 <h2>Price per SqFt by Borough (Box Plot)</h2>
                 <div class="desc">Compare distribution across boroughs; outliers are shown as points.</div>
-                <div id="chart-outliers"></div>
+                <div id="chart-pps_box"></div>
             </div>
         </div>
 
-        <div id="clusters" class="tab-content">
+        <div id="corr" class="tab-content">
             <div class="chart-container">
                 <h2>Feature Correlation (Heatmap)</h2>
                 <div class="desc">Correlation matrix for key features (price, size, year built, units, price per sqft).</div>
-                <div id="chart-clusters"></div>
+                <div id="chart-corr"></div>
             </div>
         </div>
     </div>
@@ -143,9 +143,9 @@
         var plotBuilding = {{ plot_building | safe }};
         var plotScatter = {{ plot_scatter | safe }};
         var plotTrend = {{ plot_trend | safe }};
-        var plotKnn = {{ plot_knn | safe }};
-        var plotOutliers = {{ plot_outliers | safe }};
-        var plotClusters = {{ plot_clusters | safe }};
+        var plotPriceDist = {{ plot_price_dist | safe }};
+        var plotPpsBox = {{ plot_pps_box | safe }};
+        var plotCorr = {{ plot_corr | safe }};
         
 
         // Render Charts
@@ -157,9 +157,9 @@
         
         // Render Advanced Charts (need to resize when tab opens)
         var advancedConfig = {responsive: true};
-        Plotly.newPlot('chart-knn', plotKnn.data, plotKnn.layout, advancedConfig);
-        Plotly.newPlot('chart-outliers', plotOutliers.data, plotOutliers.layout, advancedConfig);
-        Plotly.newPlot('chart-clusters', plotClusters.data, plotClusters.layout, advancedConfig);
+        Plotly.newPlot('chart-price_dist', plotPriceDist.data, plotPriceDist.layout, advancedConfig);
+        Plotly.newPlot('chart-pps_box', plotPpsBox.data, plotPpsBox.layout, advancedConfig);
+        Plotly.newPlot('chart-corr', plotCorr.data, plotCorr.layout, advancedConfig);
 
         // Tab Logic
         function openTab(tabName, e) {

@@ -17,7 +17,7 @@ Flask Blueprint:NYC 房产分析的 Web 路由。
 路由清单:
     GET  /          —— Dashboard,渲染 7 个图表
     GET  /predict   —— 显示空白预测表单
-    POST /predict   —— 处理表单提交,返回 KNN 预测或验证错误
+    POST /predict   —— 处理表单提交,返回模型预测或验证错误
 """
 
 from flask import Blueprint, current_app, render_template, request
@@ -66,8 +66,7 @@ def index():
     渲染到 templates/index.html。
     """
     charts = current_app.config["CHARTS"]
-    return render_template("index.html", **charts) # ** 这个语法叫"字典解包"——把字典拆成"键=值"的参数。
-                                                   # **charts ——把 charts 字典"展开"成一个个变量传给模板。
+    return render_template("index.html", **charts)
 
 
 # ============================================================

@@ -12,7 +12,7 @@ validators.py
     用户输错不是"意外",是预期内事件。异常应该留给真正的意外
     (数据库断连、磁盘满之类)。Result Pattern 让控制流更清晰。
 
-预测表单的 4 个字段(对应 KNN 模型的 4 个特征):
+预测表单的字段验证规则:
     GROSS SQUARE FEET   > 0
     YEAR BUILT          1800 ~ 2030
     TOTAL UNITS         1 ~ 1000

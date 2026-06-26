@@ -2,7 +2,7 @@
 
 > Full-stack Flask application that analyzes NYC property sales and predicts prices using a **model-selection pipeline** — four candidate models are trained, cross-validated, and the best (a tuned **LightGBM** regressor) is served for prediction.
 
-A bootcamp project demonstrating data cleaning, **model comparison & selection**, feature engineering, hyperparameter tuning, modular Python architecture, and Flask web development end-to-end.
+A project demonstrating data cleaning, **model comparison & selection**, feature engineering, hyperparameter tuning, modular Python architecture, and Flask web development end-to-end.
 
 ---
 

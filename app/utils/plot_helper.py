@@ -277,23 +277,23 @@ class PlotService:
         生成所有 7 个图,返回 dict。
 
         Key 名要和 templates/index.html 里的 Jinja 变量对得上:
-            plot_borough  → Bar
-            plot_building → Pie
-            plot_scatter  → Scatter
-            plot_trend    → Line
-            plot_knn      → Histogram (历史命名,id="knn" tab)
-            plot_outliers → Box       (历史命名,id="outliers" tab)
-            plot_clusters → Heatmap   (历史命名,id="clusters" tab)
+            plot_borough    → Bar
+            plot_building   → Pie
+            plot_scatter    → Scatter
+            plot_trend      → Line
+            plot_price_dist → Histogram
+            plot_pps_box    → Box
+            plot_corr       → Heatmap
         """
         print("🎨 Generating 7 charts...")
         charts = {
-            "plot_borough":  PlotService.make_borough_bar(df),
-            "plot_building": PlotService.make_building_pie(df),
-            "plot_scatter":  PlotService.make_scatter(df),
-            "plot_trend":    PlotService.make_trend_line(df),
-            "plot_knn":      PlotService.make_price_hist(df),
-            "plot_outliers": PlotService.make_pps_box(df),
-            "plot_clusters": PlotService.make_corr_heatmap(df),
+            "plot_borough":    PlotService.make_borough_bar(df),
+            "plot_building":   PlotService.make_building_pie(df),
+            "plot_scatter":    PlotService.make_scatter(df),
+            "plot_trend":      PlotService.make_trend_line(df),
+            "plot_price_dist": PlotService.make_price_hist(df),
+            "plot_pps_box":    PlotService.make_pps_box(df),
+            "plot_corr":       PlotService.make_corr_heatmap(df),
         }
         print(f"✅ Generated {len(charts)} charts")
         return charts
