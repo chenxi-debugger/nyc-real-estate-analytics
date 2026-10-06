@@ -1,4 +1,5 @@
 # NYC Real Estate Price Predictor
+**🔗 Live Demo:** https://nyc-real-estate-analytics.onrender.com *(free tier — first load may take about a minute)*
 
 > Full-stack Flask application that analyzes NYC property sales and predicts prices using a **model-selection pipeline** — four candidate models are trained, cross-validated, and the best (a tuned **LightGBM** regressor) is served for prediction.
 
